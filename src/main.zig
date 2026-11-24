@@ -1,14 +1,12 @@
 const std = @import("std");
 const ma = @import("ma");
 
-fn sineSample(n: usize, sample_rate: f64, frequency: f64, amplitude: f64) f64 {
-    const sample_index: f64 = @floatFromInt(n);
-    const elapsed_seconds = sample_index / sample_rate;
-    return std.math.sin(std.math.tau * elapsed_seconds * frequency) * amplitude;
+fn sineSample(phase: f64, amplitude: f64) f64 {
+    return std.math.sin(std.math.tau * phase) * amplitude;
 }
 
 const Playback = struct {
-    next_sample: usize = 0,
+    phase: f64 = 0.0,
 };
 
 fn fillAudio(
@@ -20,10 +18,13 @@ fn fillAudio(
     const samples: [*]f32 = @ptrCast(@alignCast(output orelse return));
     const state: *Playback = @ptrCast(@alignCast(device[0].pUserData.?));
     const sample_rate: f64 = @floatFromInt(device[0].sampleRate);
+    const phase_step: f64 = 440.0 / sample_rate;
 
     for (samples[0..frame_count]) |*sample| {
-        sample.* = @floatCast(sineSample(state.next_sample, sample_rate, 440.0, 0.05));
-        state.next_sample += 1;
+        sample.* = @floatCast(sineSample(state.phase, 0.05));
+
+        const next_phase = state.phase + phase_step;
+        state.phase = if (next_phase >= 1.0) next_phase - 1.0 else next_phase;
     }
 }
 
